@@ -114,12 +114,13 @@ Module.register('MMM-Traffic', {
   },
 
   replaceTokens: function (text) {
-    var hours = Math.floor(parseInt(this.duration) / 60);
-    var minutes = hours % 60;
-    
-    if (hours == 1) text.replace("hours", "hour");
-    else if (hours == 0) text.replace("{hours} hours {minutes} minutes", `${minutes} minutes`);
-    if (minutes.toString().length == 1) text.replace("minutes","minute");
+    var hours = Math.floor(parseInt(this.duration, 10) / 60);
+    var minutes = this.duration % 60;
+    text = text.replace("{hours}",hours);
+    text = text.replace("{minutes}", minutes)
+    if (hours === 1) text = text.replace("hours", "hour");
+    else if (hours === 0) text = text.replace("{hours} hours {minutes} minutes", `${minutes} minutes`);
+    if (minutes.toString().length === 1) text = text.replace("minutes","minute");
     return text;
   },
 
