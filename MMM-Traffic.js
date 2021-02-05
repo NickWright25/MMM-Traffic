@@ -114,7 +114,9 @@ Module.register('MMM-Traffic', {
   },
 
   replaceTokens: function (text) {
-    return text.replace('{duration}', this.duration);
+    var hours = Math.floor(this.duration / 60);
+    var minutes = hours % 60;
+    return text.replace('{hours} hours {minutes} minutes', hours, minutes);
   },
 
   shouldHide: function () {
