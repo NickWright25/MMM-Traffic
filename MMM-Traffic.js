@@ -120,6 +120,7 @@ Module.register('MMM-Traffic', {
     if (hours == 1) text.replace("hours", "hour");
     else if (hours == 0) text.replace("{hours} hours {minutes} minutes", `${minutes} minutes`);
     if (minutes.toString().length == 1) text.replace("minutes","minute");
+    return text;
   },
 
   shouldHide: function () {
