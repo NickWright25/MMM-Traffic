@@ -117,7 +117,7 @@ Module.register('MMM-Traffic', {
     let output;
     var hours = Math.floor(parseInt(this.duration, 10) / 60);
     var minutes = this.duration % 60;
-    if (hours === 0) ouput = `${minutes} mins`;
+    if (hours === 0) output = `${minutes} mins`;
     else if (hours === 1) output = `${hours} hour ${minutes} mins`;
     else text = `${hours} hours ${minutes} mins`;
     if (minutes.toString().length === 1) output = output.replace("minutes","minute");
