@@ -8,6 +8,7 @@ This a module for the [MagicMirror](https://github.com/MichMich/MagicMirror/tree
 
 - [Installation](#installation)
 - [Mapbox Access Token](#mapbox-access-token)
+- [Styling](#styling)
 - [Configuration](#configuration)
   - [Required](#required)
   - [Basic Options](#basic-options)
@@ -20,7 +21,7 @@ This a module for the [MagicMirror](https://github.com/MichMich/MagicMirror/tree
   - [Multiple Routes](#multiple-routes)
   - [Per day customization](#per-day-customization)
 - [Dependencies](#dependencies)
-- [Legacy](#Legacy)
+- [Legacy](#legacy)
 
 ## Installation
 
@@ -36,7 +37,26 @@ npm install
 
 1. Create an account at [Mapbox](https://account.mapbox.com/)
 2. Copy the access token visible after account creation (go [here](https://account.mapbox.com/) if you don't see it)
-	- _Note: Google maps coordinates are `latitude,longitude`, but Mapbox uses `longitude,latitude` so be sure to reverse what you copy from Google._
+
+## Styling
+
+You can use a global `MagicMirror/css/custom.css` file to customize the styles for each line of MMM-Traffic separately. Each line has its own class that should be used to apply styles:
+  - `.mmmtraffic-firstline`
+  - `.mmmtraffic-secondline`
+
+For example, this css
+```
+.mmmtraffic-firstline {
+  font-size: 40px;
+  color: yellow;
+}
+
+.mmmtraffic-secondline {
+  color: green;
+}
+```
+leads to this abomination:
+![css example screenshot](screenshots/css-example.png)
 
 ## Configuration
 
@@ -44,6 +64,8 @@ npm install
 
 See [here](https://support.google.com/maps/answer/18539)
 for instructions on how to use Google Maps webpage/app to get coordinates for your origin/destination.
+
+_Note: Google maps coordinates are `latitude,longitude`, but Mapbox uses `longitude,latitude` so be sure to reverse what you copy from Google._
 
 | Option              | Description                                  | Type   | Example                   |
 | ------------------- | -------------------------------------------- | ------ | ------------------------- |
@@ -53,11 +75,12 @@ for instructions on how to use Google Maps webpage/app to get coordinates for yo
 
 ### Basic Options
 
-| Option       | Description                                       | Type    | Default Value           | Supported Options   |
-| ------------ | ------------------------------------------------- | ------- | ----------------------- | ------------------- |
-| `language`   | Define the commute time language.                 | string  | `config.language`       | Any language string |
-| `interval`   | How often the traffic is updated in milliseconds. | integer | `300000`<br>(5 minutes) |                     |
-| `showSymbol` | Whether to show the car symbol or not.            | boolean | true                    |                     |
+| Option       | Description                                       | Type    | Default Value           | Supported Options    |
+| ------------ | ------------------------------------------------- | ------- | ----------------------- | -------------------  |
+| `mode`       | Change the module to cycling or walking.          | string  | `'driving'`             | `'walking' 'cycling'`|
+| `language`   | Define the commute time language.                 | string  | `config.language`       | Any language string  |
+| `interval`   | How often the traffic is updated in milliseconds. | integer | `300000`<br>(5 minutes) |                      |
+| `showSymbol` | Whether to show the car symbol or not.            | boolean | true                    |                      |
 
 ### Translation/Display
 
@@ -86,7 +109,7 @@ rate limited.
 
 | Option       | Description                                                              | Type       | Default                 |
 | ------------ | ------------------------------------------------------------------------ | ---------- | ----------------------- |
-| `days`       | Which days of the week to show the traffic module, with 0 being Monday   | Array[int] | `[0, 1, 2, 3, 4, 5, 6]` |
+| `days`       | Which days of the week to show the traffic module, with 0 being Sunday   | Array[int] | `[0, 1, 2, 3, 4, 5, 6]` |
 | `hoursStart` | What time to begin showing the module on the days it shows, 24 hour time | String | `"00:00"`                 |
 | `hoursEnd`   | What time to stop showing the module on the days it shows, 24 hour time  | String | `"23:59"`                 |
 
