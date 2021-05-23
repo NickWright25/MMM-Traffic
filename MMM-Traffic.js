@@ -12,6 +12,7 @@ Module.register('MMM-Traffic', {
     firstLine: 'Current duration is {duration} mins',
     loadingText: 'Loading...',
     language: config.language,
+    mode: 'driving',
     days: [0, 1, 2, 3, 4, 5, 6],
     hoursStart: '00:00',
     hoursEnd: '23:59'
@@ -20,45 +21,67 @@ Module.register('MMM-Traffic', {
   start: function () {
     console.log('Starting module: ' + this.name);
     this.loading = true;
-    this.hidden = false;
+    this.internalHidden = false;
     this.firstResume = true;
     this.errorMessage = undefined;
     this.errorDescription = undefined;
+    this.updateCommute = this.updateCommute.bind(this);
+    this.getCommute = this.getCommute.bind(this);
+    this.getDom = this.getDom.bind(this);
     if ([this.config.originCoords, this.config.destinationCoords, this.config.accessToken].includes(undefined)) {
       this.errorMessage = 'Config error';
       this.errorDescription = 'You must set originCoords, destinationCoords, and accessToken in your config';
       this.updateDom();
     } else {
-      this.updateCommute(this);
+      this.updateCommute();
     }
   },
 
-  resume: function () {
-    // Added to fix issue when used with MMM-Pages where updateDom was called
-    // while MMM-Traffic was suspended. This is due to receiving traffic info
-    // from node_helper while suspended. Could probably strip out the node_helper
-    // entirely but this works for now.
-    if (this.firstResume) {
-      this.firstResume = false;
-      this.updateDom(1000);
-    }
-  },
-
-  updateCommute: function (self) {
-    self.url = encodeURI(`https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${self.config.originCoords};${self.config.destinationCoords}?access_token=${self.config.accessToken}`);
+  updateCommute: function () {
+    let mode = this.config.mode == 'driving' ? 'driving-traffic' : this.config.mode;
+    this.url = encodeURI(`https://api.mapbox.com/directions/v5/mapbox/${mode}/${this.config.originCoords};${this.config.destinationCoords}?access_token=${this.config.accessToken}`);
 
     // only run getDom once at the start of a hidden period to remove the module from the screen, then just wait until time to unhide to run again
-    if (self.shouldHide() && !self.hidden) {
-      console.log('Hiding MMM-Traffic');
-      self.hidden = true;
-      self.updateDom();
-    } else if (!self.shouldHide()) {
-      self.hidden = false;
-      self.sendSocketNotification('TRAFFIC_URL', { 'url': self.url });
+    if (this.shouldHide() && !this.internalHidden) {
+      console.log('Hiding MMM-Traffic due to config options: days, hoursStart, hoursEnd');
+      this.internalHidden = true;
+      this.updateDom();
+    } else if (!this.shouldHide()) {
+      this.internalHidden = false;
+      this.getCommute(this.url);
     }
     // no network requests are made when the module is hidden, so check every 30 seconds during hidden
     // period to see if it's time to unhide yet
-    setTimeout(self.updateCommute, self.hidden ? 3000 : self.config.interval, self);
+    setTimeout(this.updateCommute, this.internalHidden ? 3000 : this.config.interval);
+  },
+
+  getCommute: function (api_url) {
+    var self = this;
+    fetch(api_url)
+      .then(self.checkStatus)
+      .then(json => {
+        self.duration = Math.round(json.routes[0].duration / 60);
+        self.errorMessage = self.errorDescription = undefined;
+        self.loading = false;
+        self.updateDom();
+      })
+      .catch(e => {
+        self.errorMessage = payload.error.message;
+        self.errorDescription = payload.error.description;
+        self.loading = false;
+        self.updateDom();
+      });
+
+  },
+
+  checkStatus: function (res) {
+    if (res.ok) {
+      return res.json();
+    } else {
+      return res.json().then(json => {
+        throw new MMMTrafficError(`API Error - ${json.code}`, json.message);
+      });
+    }
   },
 
   getStyles: function () {
@@ -73,13 +96,13 @@ Module.register('MMM-Traffic', {
     var wrapper = document.createElement("div");
 
     // hide when desired (called once on first update during hidden period)
-    if (this.hidden) return wrapper;
+    if (this.internalHidden) return wrapper;
 
     // base divs
     var firstLineDiv = document.createElement('div');
-    firstLineDiv.className = 'bright medium';
+    firstLineDiv.className = 'bright medium mmmtraffic-firstline';
     var secondLineDiv = document.createElement('div');
-    secondLineDiv.className = 'normal small';
+    secondLineDiv.className = 'normal small mmmtraffic-secondline';
 
     // display any errors
     if (this.errorMessage) {
@@ -90,10 +113,14 @@ Module.register('MMM-Traffic', {
       return wrapper;
     }
 
+    let symbolString = 'car';
+    if (this.config.mode == 'cycling') symbolString = 'bicycle';
+    if (this.config.mode == 'walking') symbolString = 'walking';
+
     // symbol
     if (this.config.showSymbol) {
       var symbol = document.createElement('span');
-      symbol.className = 'fa fa-car symbol';
+      symbol.className = `fa fa-${symbolString} symbol`;
       firstLineDiv.appendChild(symbol);
     }
 
@@ -121,7 +148,7 @@ Module.register('MMM-Traffic', {
     else if (hours === 1) output = `${hours} hour ${minutes} mins`;
     else output = `${hours} hours ${minutes} mins`;
     if (minutes.toString().length === 1) output = output.replace("minutes","minute");
-    return text.replace('{text}',output);
+    return text.replace(/{text}/g,output);
   },
 
   shouldHide: function () {
@@ -135,22 +162,4 @@ Module.register('MMM-Traffic', {
     }
     return hide;
   },
-
-  socketNotificationReceived: function (notification, payload) {
-    this.leaveBy = '';
-    if (notification === 'MMM_TRAFFIC_DURATION' && payload.url === this.url) {
-      console.log('received MMM_TRAFFIC_DURATION');
-      this.duration = payload.duration;
-      this.errorMessage = this.errorDescription = undefined;
-      this.loading = false;
-      this.updateDom(1000);
-    } else if (notification === 'MMM_TRAFFIC_ERROR' && payload.url === this.url) {
-      console.log('received MMM_TRAFFIC_ERROR');
-      this.errorMessage = payload.error.message;
-      this.errorDescription = payload.error.description;
-      this.loading = false;
-      this.updateDom(1000);
-    }
-  }
-
 });
